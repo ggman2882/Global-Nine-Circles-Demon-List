@@ -24,6 +24,10 @@ export default {
                         <input type="checkbox" id="extended" value="Extended List" v-model="useExtendedList">
                         <label for="extended">Extended List</label>
                     </div>
+                    <div class="check">
+                        <input type="checkbox" id="legacy" value="Legacy List" v-model="useLegacyList">
+                        <label for="extended">Legacy List</label>
+                    </div>
                     <Btn @click.native.prevent="onStart">{{ levels.length === 0 ? 'Start' : 'Restart'}}</Btn>
                 </form>
                 <p class="type-label-md" style="color: #aaa">
@@ -108,6 +112,7 @@ export default {
         showRemaining: false,
         useMainList: true,
         useExtendedList: true,
+        useLegacyList: false,
         toasts: [],
         fileInput: undefined,
     }),
@@ -163,15 +168,16 @@ export default {
                 return;
             }
 
-            if (!this.useMainList && !this.useExtendedList) {
+            if (!this.useMainList && !this.useExtendedList && !this.useLegacyList) {
                 return;
             }
 
             this.loading = true;
 
-            const fullList = await fetchList();
+            const fullListWithBenchmarks = await fetchList();
+            const fullList = fullListWithBenchmarks.filter(([_, rank, __]) => rank !== null);
 
-            if (fullList.filter(([_, err]) => err).length > 0) {
+            if (fullList === null || fullList.filter(([err, _, __]) => err).length > 0) {
                 this.loading = false;
                 this.showToast(
                     'List is currently broken. Wait until it\'s fixed to start a roulette.',
@@ -179,8 +185,8 @@ export default {
                 return;
             }
 
-            const fullListMapped = fullList.map(([lvl, _], i) => ({
-                rank: i + 1,
+            const fullListMapped = fullList.map(([_, rank, lvl]) => ({
+                rank,
                 id: lvl.id,
                 name: lvl.name,
                 video: lvl.verification,
@@ -189,6 +195,9 @@ export default {
             if (this.useMainList) list.push(...fullListMapped.slice(0, 75));
             if (this.useExtendedList) {
                 list.push(...fullListMapped.slice(75, 150));
+            }
+            if (this.useLegacyList) {
+                list.push(...fullListMapped.slice(150));
             }
 
             // random 100 levels

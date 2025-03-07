@@ -1,3 +1,10 @@
+:root {
+    --color-background: white;
+    --color-on-background: black;
+    --color-primary: black;
+    --color-on-primary: white;
+}
+
 .nav {
     display: flex;
     column-gap: 2rem;
