@@ -1,17 +1,17 @@
-import { store } from '../main.js';
-import { embed } from '../util.js';
-import { score } from '../score.js';
-import { fetchEditors, fetchList} from '../content.js';
+import { store } from "../main.js";
+import { embed } from "../util.js";
+import { score } from "../score.js";
+import { fetchEditors, fetchList } from "../content.js";
 
-import Spinner from '../components/Spinner.js';
-import LevelAuthors from '../components/List/LevelAuthors.js';
+import Spinner from "../components/Spinner.js";
+import LevelAuthors from "../components/List/LevelAuthors.js";
 
 const roleIconMap = {
-    owner: 'crown',
-    admin: 'user-gear',
-    helper: 'user-shield',
-    dev: 'code',
-    trial: 'user-lock',
+    owner: "crown",
+    admin: "user-gear",
+    helper: "user-shield",
+    dev: "code",
+    trial: "user-lock",
 };
 
 export default {
@@ -23,12 +23,12 @@ export default {
         <main v-else class="page-list">
             <div class="list-container">
                 <table class="list" v-if="list">
-                    <tr v-for="([err, rank, level], i) in list">
+                    <tr v-for="([level, err], i) in list">
                         <td class="rank">
-                            <p v-if="rank === null" class="type-label-lg">&mdash;</p>
-                            <p v-else class="type-label-lg" :style="{ color: rank > 150 ? 'darkgrey' : undefined }">#{{ rank }}</p>
+                            <p v-if="i + 1 <= 150" class="type-label-lg">#{{ i + 1 }}</p>
+                            <p v-else class="type-label-lg">Legacy</p>
                         </td>
-                        <td class="level" :class="{ 'active': selected == i, 'error': err !== null }">
+                        <td class="level" :class="{ 'active': selected == i, 'error': !level }">
                             <button @click="selected = i">
                                 <span class="type-label-lg">{{ level?.name || \`Error (\${err}.json)\` }}</span>
                             </button>
@@ -40,22 +40,11 @@ export default {
                 <div class="level" v-if="level">
                     <h1>{{ level.name }}</h1>
                     <LevelAuthors :author="level.author" :creators="level.creators" :verifier="level.verifier"></LevelAuthors>
-                    <div style="display:flex">
-                        <div v-for="tag in level.tags" class="tag">{{tag}}</div>
-                    </div>
-                    <div v-if="level.showcase" class="tabs">
-                        <button class="tab type-label-lg" :class="{selected: !toggledShowcase}" @click="toggledShowcase = false">
-                            <span class="type-label-lg">Verification</span>
-                        </button>
-                        <button class="tab" :class="{selected: toggledShowcase}" @click="toggledShowcase = true">
-                            <span class="type-label-lg">Showcase</span>
-                        </button>
-                    </div>
                     <iframe class="video" id="videoframe" :src="video" frameborder="0"></iframe>
                     <ul class="stats">
                         <li>
                             <div class="type-title-sm">Points when completed</div>
-                            <p>{{ score(level.rank, 100, level.percentToQualify, list.filter((x)=>x[2]["rank"]!==null).length) }}</p>
+                            <p>{{ score(selected + 1, 100, level.percentToQualify) }}</p>
                         </li>
                         <li>
                             <div class="type-title-sm">ID</div>
@@ -63,20 +52,13 @@ export default {
                         </li>
                         <li>
                             <div class="type-title-sm">Password</div>
-                            <p>{{ level.password || 'Free to copy' }}</p>
-                        </li>
-                    </ul>
-                    <ul stats="stats" v-if="level.song">
-                        <li>
-                            <div class="type-title-sm">Song</div><br>
-                            <p><a :href="(level.song===undefined)?'#':level.song" :style="{'text-decoration':(level.song===undefined)?'none':'underline'}">Link to song</a></p>
+                            <p>{{ level.password || 'Free to Copy' }}</p>
                         </li>
                     </ul>
                     <h2>Records</h2>
-                    <p v-if="level.rank === null">This level does not accept records.</p>
-                    <p v-else-if="level.rank <= 75"><strong>{{ level.percentToQualify }}%</strong> or better to qualify</p>
-                    <p v-else-if="level.rank <= 150"><strong>100%</strong> or better to qualify</p>
-                    <p v-else>This level has fallen to legacy, but still accepts completion records.</p>
+                    <p v-if="selected + 1 <= 75"><strong>{{ level.percentToQualify }}%</strong> or better to qualify</p>
+                    <p v-else-if="selected +1 <= 150"><strong>100%</strong> or better to qualify</p>
+                    <p v-else>This level does not accept new records.</p>
                     <table class="records">
                         <tr v-for="record in level.records" class="record">
                             <td class="percent">
@@ -87,6 +69,9 @@ export default {
                             </td>
                             <td class="mobile">
                                 <img v-if="record.mobile" :src="\`/assets/phone-landscape\${store.dark ? '-dark' : ''}.svg\`" alt="Mobile">
+                            </td>
+                            <td class="hz">
+                                <p>{{ record.hz }}Hz</p>
                             </td>
                         </tr>
                     </table>
@@ -101,7 +86,7 @@ export default {
                         <p class="error" v-for="error of errors">{{ error }}</p>
                     </div>
                     <div class="og">
-                        <p class="type-label-md">Website layout on <a href="https://tsl.pages.dev/" target="_blank">TheShittyList</a>.</p>
+                        <p class="type-label-md">Website layout made by <a href="https://tsl.pages.dev/" target="_blank">TheShittyList</a></p>
                     </div>
                     <template v-if="editors">
                         <h3>List Editors</h3>
@@ -127,13 +112,16 @@ export default {
                         The recording must have a previous attempt and entire death animation shown before the completion, unless the completion is on the first attempt. Everyplay records are exempt from this
                     </p>
                     <p>
+                        The recording must also show the player hit the endwall, or the completion will be invalidated.
+                    </p>
+                    <p>
                         Do not use secret routes or bug routes
                     </p>
                     <p>
-                        Do not use superbuffed/easy/changed gp version of a level, only a record of the unmodified level qualifies
+                        Do not use easy modes, only a record of the unmodified level qualifies
                     </p>
                     <p>
-                        Once a level falls onto the Legacy List, we accept records for it still, but they won't award any kind of points for the leaderboard
+                        Once a level falls onto the Legacy List, we accept records for it for 24 hours after it falls off, then afterwards we never accept records for said level
                     </p>
                 </div>
             </div>
@@ -145,14 +133,12 @@ export default {
         loading: true,
         selected: 0,
         errors: [],
-        listlevels: 0,
         roleIconMap,
-        store,
-        toggledShowcase: false,
+        store
     }),
     computed: {
         level() {
-            return this.list && this.list[this.selected] && this.list[this.selected][2];
+            return this.list[this.selected][0];
         },
         video() {
             if (!this.level.showcase) {
@@ -170,21 +156,22 @@ export default {
         // Hide loading spinner
         this.list = await fetchList();
         this.editors = await fetchEditors();
+
         // Error handling
         if (!this.list) {
             this.errors = [
-                'Failed to load list. Retry in a few minutes or notify list staff.',
+                "Failed to load list. Retry in a few minutes or notify list staff.",
             ];
         } else {
             this.errors.push(
                 ...this.list
-                    .filter(([err, _, __]) => err)
-                    .map(([err, _, __]) => {
+                    .filter(([_, err]) => err)
+                    .map(([_, err]) => {
                         return `Failed to load level. (${err}.json)`;
-                    }),
+                    })
             );
             if (!this.editors) {
-                this.errors.push('Failed to load list editors.');
+                this.errors.push("Failed to load list editors.");
             }
         }
 
