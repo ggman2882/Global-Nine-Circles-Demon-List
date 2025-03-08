@@ -1,49 +1,32 @@
-import { round, score } from "./score.js";
+import { round, score } from './score.js';
 
 /**
  * Path to directory containing `_list.json` and all levels
  */
-const dir = "/data";
-
-/**
- * Symbol, that marks a level as not part of the list
- */
-const benchmarker = "_";
+const dir = '/data';
 
 export async function fetchList() {
     const listResult = await fetch(`${dir}/_list.json`);
     try {
         const list = await listResult.json();
-
-        // Create a lookup dictionary for ranks
-        const ranksEntries = list
-            .filter((path) => !path.startsWith(benchmarker))
-            .map((path, index) => [path, index + 1]);
-        const ranks = Object.fromEntries(ranksEntries);
-
         return await Promise.all(
-            list.map(async (path) => {
-                const rank = ranks[path] || null;
+            list.map(async (path, rank) => {
+                const levelResult = await fetch(`${dir}/${path}.json`);
                 try {
-                    const levelResult = await fetch(
-                        `${dir}/${path.startsWith(benchmarker) ? path.substring(1) : path}.json`,
-                    );
                     const level = await levelResult.json();
                     return [
-                        null,
-                        rank,
                         {
                             ...level,
-                            rank,
                             path,
                             records: level.records.sort(
                                 (a, b) => b.percent - a.percent,
                             ),
                         },
+                        null,
                     ];
                 } catch {
-                    console.error(`Failed to load level #${rank} ${path}.`);
-                    return [path, rank, null];
+                    console.error(`Failed to load level #${rank + 1} ${path}.`);
+                    return [null, path];
                 }
             }),
         );
@@ -68,58 +51,34 @@ export async function fetchLeaderboard() {
 
     const scoreMap = {};
     const errs = [];
-
-    if (list === null) {
-        return [null, ["Failed to load list."]];
-    }
-    let listbans = null;
-    try {
-        const listbanResults = await fetch(`${dir}/_lbfilter.json`);
-        listbans = await listbanResults.json();
-    } catch {
-        return [null, ["Failed to load bans list."]];
-    }
-    let lenlist = list.filter((x) => x[2]["rank"] !== null).length;
-
-    list.forEach(([err, rank, level]) => {
+    list.forEach(([level, err], rank) => {
         if (err) {
             errs.push(err);
             return;
         }
 
-        if (rank === null) {
-            return;
-        }
-
         // Verification
-        const verifier =
-            Object.keys(scoreMap).find(
-                (u) => u.toLowerCase() === level.verifier.toLowerCase(),
-            ) || level.verifier;
-        if (!listbans.includes(verifier)) {
-            scoreMap[verifier] ??= {
-                verified: [],
-                completed: [],
-                progressed: [],
-            };
-            const { verified } = scoreMap[verifier];
-            verified.push({
-                rank,
-                level: level.name,
-                score: score(rank, 100, level.percentToQualify, lenlist),
-                link: level.verification,
-            });
-        }
+        const verifier = Object.keys(scoreMap).find(
+            (u) => u.toLowerCase() === level.verifier.toLowerCase(),
+        ) || level.verifier;
+        scoreMap[verifier] ??= {
+            verified: [],
+            completed: [],
+            progressed: [],
+        };
+        const { verified } = scoreMap[verifier];
+        verified.push({
+            rank: rank + 1,
+            level: level.name,
+            score: score(rank + 1, 100, level.percentToQualify),
+            link: level.verification,
+        });
 
         // Records
         level.records.forEach((record) => {
-            const user =
-                Object.keys(scoreMap).find(
-                    (u) => u.toLowerCase() === record.user.toLowerCase(),
-                ) || record.user;
-            if (listbans.includes(user)) {
-                return;
-            }
+            const user = Object.keys(scoreMap).find(
+                (u) => u.toLowerCase() === record.user.toLowerCase(),
+            ) || record.user;
             scoreMap[user] ??= {
                 verified: [],
                 completed: [],
@@ -128,24 +87,19 @@ export async function fetchLeaderboard() {
             const { completed, progressed } = scoreMap[user];
             if (record.percent === 100) {
                 completed.push({
-                    rank,
+                    rank: rank + 1,
                     level: level.name,
-                    score: score(rank, 100, level.percentToQualify, lenlist),
+                    score: score(rank + 1, 100, level.percentToQualify),
                     link: record.link,
                 });
                 return;
             }
 
             progressed.push({
-                rank,
+                rank: rank + 1,
                 level: level.name,
                 percent: record.percent,
-                score: score(
-                    rank,
-                    record.percent,
-                    level.percentToQualify,
-                    lenlist,
-                ),
+                score: score(rank + 1, record.percent, level.percentToQualify),
                 link: record.link,
             });
         });
