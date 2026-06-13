@@ -2,26 +2,26 @@
     {
         "role": "owner",
         "name": "GGman228",
-        "link": "https://www.youtube.com/@Prometheus_Alt"
+        "link": "https://www.youtube.com/@ggman228"
     },
     {
         "role": "admin",
-        "name": "Ivan, Fedor",
+        "name": "Nobody",
         "link": "https://www.youtube.com/@Prometheus_Alt"
     },
     {
         "role": "helper",
-        "name": "List Helper",
+        "name": "Nobody",
         "link": "https://www.youtube.com/@Prometheus_Alt"
     },
     {
         "role": "trial",
-        "name": "Trial List Helper",
+        "name": "Nobody",
         "link": "https://www.youtube.com/@Prometheus_Alt"
     },
     {
         "role": "dev",
-        "name": "List Coder",
+        "name": "Nobody",
         "link": "https://www.youtube.com/@Prometheus_Alt"
     }
 ]
